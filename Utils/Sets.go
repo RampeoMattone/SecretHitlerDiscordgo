@@ -9,7 +9,7 @@ func (s Set) Add(elem interface{}) {
 }
 
 // AddAll Adds a list of elements to the set
-func (s Set) AddAll(elem ... interface{}) {
+func (s Set) AddAll(elem ...interface{}) {
 	for e := range elem {
 		s[e] = struct{}{}
 	}

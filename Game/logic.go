@@ -14,7 +14,7 @@ func init() {
 
 // newDeck generates a new deck for a game and shuffles it ahead of time
 func newDeck() Deck {
-	var d = Deck {
+	var d = Deck{
 		pos: 0,
 		arr: [17]Policy{
 			LIBERAL_POLICY, LIBERAL_POLICY, LIBERAL_POLICY, LIBERAL_POLICY, LIBERAL_POLICY, LIBERAL_POLICY,
@@ -40,11 +40,11 @@ func NewGame() Game {
 		lastElected:     Utils.Set{},
 		executed:        Utils.Set{},
 		turnNum:         0,
-		turnStage:		 UNINITIALIZED,
+		turnStage:       UNINITIALIZED,
 		electionTracker: 0,
 		fascistBoard:    0,
 		liberalBoard:    0,
-		mut: sync.RWMutex{},
+		mut:             sync.RWMutex{},
 	}
 }
 
@@ -68,7 +68,7 @@ func (g *Game) Join(usr *discordgo.User) bool {
 // setRoles sets one player as HITLER_ROLE and f players as FASCIST_ROLE
 func (g Game) setRoles(f int) {
 	var rSet = make(Utils.Set) // make a set to store numbers we extract
-	var r int // stores a random number
+	var r int                  // stores a random number
 	// set #f players as FASCIST_ROLE
 	for i := 0; i < f; i++ {
 		r = rand.Intn(10) // extract a random number
@@ -76,7 +76,7 @@ func (g Game) setRoles(f int) {
 		for rSet.Has(r) {
 			r = rand.Intn(10)
 		}
-		rSet.Add(r)                  // add the extracted number to the set
+		rSet.Add(r)                      // add the extracted number to the set
 		g.players[r].role = FASCIST_ROLE // set the player role
 	}
 	// set a player as HITLER_ROLE
@@ -117,7 +117,7 @@ func (g *Game) NewPresident(out chan<- string) { // we have to use a channel bec
 	if g.turnStage == PRESIDENT_NEEDED {
 		g.turnStage = CHANCELLOR_NEEDED
 		g.turnNum++
-		var p = g.players[len(g.players) % int(g.turnNum)]
+		var p = g.players[len(g.players)%int(g.turnNum)]
 		g.president = &p
 		out <- p.id
 	} else {

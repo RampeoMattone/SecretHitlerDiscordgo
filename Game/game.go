@@ -68,6 +68,7 @@ Game Cycle:
 */
 
 type Role uint8
+
 const (
 	LIBERAL_ROLE Role = 0
 	FASCIST_ROLE Role = 1
@@ -75,13 +76,14 @@ const (
 )
 
 type Policy bool
+
 const (
 	LIBERAL_POLICY Policy = true
 	FASCIST_POLICY Policy = false
 )
 
 type Player struct {
-	id string
+	id   string
 	role Role
 	name string
 }
@@ -92,32 +94,33 @@ type Deck struct {
 }
 
 type Game struct {
-	mut 			sync.RWMutex
-	id 				int
+	mut             sync.RWMutex
+	id              int
 	players         []Player
 	deck            Deck
 	playersMap      map[string]*Player // maps discord ids to players
-	president		*Player
-	chancellor		*Player
-	voteResult		uint8
-	voted		    Utils.Set
-	lastElected     Utils.Set          // term limits for last chancellor and last president
-	executed        Utils.Set          // pointer to players who died
-	turnNum         uint8              // used to calculate next president
-	turnStage       Stage          	   // used to track the the turnNum's development
-	electionTracker uint8              // cycles from 0 to 3
-	fascistBoard    uint8              // starts at 0 ( no cards ), ends at 6 ( 6 slots )
-	liberalBoard    uint8              // starts at 0 ( no cards ), ends at 5 ( 5 slots )
+	president       *Player
+	chancellor      *Player
+	voteResult      uint8
+	voted           Utils.Set
+	lastElected     Utils.Set // term limits for last chancellor and last president
+	executed        Utils.Set // pointer to players who died
+	turnNum         uint8     // used to calculate next president
+	turnStage       Stage     // used to track the the turnNum's development
+	electionTracker uint8     // cycles from 0 to 3
+	fascistBoard    uint8     // starts at 0 ( no cards ), ends at 6 ( 6 slots )
+	liberalBoard    uint8     // starts at 0 ( no cards ), ends at 5 ( 5 slots )
 }
 
 type Stage int8
+
 const (
-	UNINITIALIZED Stage = -1
-	PRESIDENT_NEEDED Stage = 0
-	CHANCELLOR_NEEDED Stage = 1
+	UNINITIALIZED       Stage = -1
+	PRESIDENT_NEEDED    Stage = 0
+	CHANCELLOR_NEEDED   Stage = 1
 	GOVERNMENT_ELECTION Stage = 2
-	PRESIDENT_POLICIES Stage = 3
+	PRESIDENT_POLICIES  Stage = 3
 	CHANCELLOR_POLICIES Stage = 4
-	VETO_VOTE Stage = 5
-	SPECIAL_POWER Stage = 6
+	VETO_VOTE           Stage = 5
+	SPECIAL_POWER       Stage = 6
 )
