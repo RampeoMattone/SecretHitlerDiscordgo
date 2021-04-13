@@ -61,7 +61,7 @@ func (g *Game) Join(usr *discordgo.User) bool {
 	}
 	g.playersMap[usr.ID] = &p
 	g.players = append(g.players, p)
-	go downloadAvatar(usr)
+	go DownloadAvatar(usr)
 	return true
 }
 
