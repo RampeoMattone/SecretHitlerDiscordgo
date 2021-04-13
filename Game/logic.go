@@ -44,7 +44,7 @@ func NewGame() Game {
 		electionTracker: 0,
 		fascistBoard:    0,
 		liberalBoard:    0,
-		mut:             sync.RWMutex{},
+		mut:             sync.Mutex{},
 	}
 }
 
@@ -138,13 +138,35 @@ func (g *Game) NewChancellor(usr string, c string) bool {
 	}
 }
 
-// GovernmentElection will try to propose a chancellor
-func (g *Game) GovernmentElection(usr string, v bool, out chan<- bool) bool {
+// GovernmentCastVote will cast a vote for the election
+func (g *Game) GovernmentCastVote(usr string, v bool) ElectionFeedback {
 	g.mut.Lock()
 	defer g.mut.Unlock()
-	var p = g.playersMap[usr]
-	if g.turnStage == GOVERNMENT_ELECTION && !g.voted.Has(p) {
-		g.voted.Add(p)
-	} else {
+	var p = g.playersMap[usr] // pointer to the player
+	var _, ok = g.votes[p]
+	if g.turnStage == GOVERNMENT_ELECTION && !ok {
+		g.votes[p] = v
+		if len(g.votes) == len(g.players) {
+			var r int8 = 0
+			for _, v := range g.votes {
+				switch v {
+				case true:
+					r += 1
+				case false:
+					r -= 1
+				}
+			}
+			if r > 0 { // election successful
+				g.lastElected.Clear()
+				g.lastElected.AddAll(g.president, g.chancellor)
+				g.turnStage = PRESIDENT_POLICIES
+				// TODO add deck interaction for the president
+				return PASS
+			} else { // election failed
+				return REJECT
+			}
+		}
+		return ACK
 	}
+	return ElectionFeedback(ERROR)
 }

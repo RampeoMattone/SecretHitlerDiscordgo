@@ -67,6 +67,8 @@ Game Cycle:
 				- the player is removed from the active members of the game and may only spectate
 */
 
+const ERROR int8 = -1 // general error
+
 type Role uint8
 
 const (
@@ -94,15 +96,14 @@ type Deck struct {
 }
 
 type Game struct {
-	mut             sync.RWMutex
+	mut             sync.Mutex
 	id              int
 	players         []Player
 	deck            Deck
 	playersMap      map[string]*Player // maps discord ids to players
 	president       *Player
 	chancellor      *Player
-	voteResult      uint8
-	voted           Utils.Set
+	votes           map[*Player]bool
 	lastElected     Utils.Set // term limits for last chancellor and last president
 	executed        Utils.Set // pointer to players who died
 	turnNum         uint8     // used to calculate next president
@@ -123,4 +124,12 @@ const (
 	CHANCELLOR_POLICIES Stage = 4
 	VETO_VOTE           Stage = 5
 	SPECIAL_POWER       Stage = 6
+)
+
+type ElectionFeedback int8
+
+const (
+	ACK    ElectionFeedback = 0 // the vote was registered
+	REJECT ElectionFeedback = 1 // the vote was registered and the election was rejected
+	PASS   ElectionFeedback = 2 // the vote was registered and the election was approved
 )
