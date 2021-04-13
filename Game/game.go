@@ -1,6 +1,11 @@
 // Package Game handles a game session
 package Game
 
+import (
+	"SecretHitlerDiscordgo/Utils"
+	"sync"
+)
+
 /*
 Rules recap:
 	Liberals win if one of the following happens:
@@ -10,7 +15,7 @@ Rules recap:
 		- six fascist laws are enacted
 		- Hitler is elected chancellor after the third fascist policy is enacted
 
-Setup:
+Start:
 			# PLAYERS			5 		6 		7 		8	 	9	 	10
 			Liberals 			3 		4 		4 		5 		5 		6
 			Fascists 			1+H 	1+H 	2+H 	2+H 	3+H 	3+H
@@ -71,8 +76,8 @@ const (
 
 type Policy bool
 const (
-	LIBERAL_POLICY Policy = false
-	FASCIST_POLICY Policy = true
+	LIBERAL_POLICY Policy = true
+	FASCIST_POLICY Policy = false
 )
 
 type Player struct {
@@ -87,12 +92,32 @@ type Deck struct {
 }
 
 type Game struct {
-	players []Player
-	playersMap map[string]*Player // maps discord ids to players
-	lastElected map[*Player]bool // term limits for last chancellor and last president
-	executed map[*Player]bool // pointer to players who died
-	turn uint8 // used to calculate next president
-	electionTracker uint8 // cycles from 0 to 3
-	fascistBoard uint8 // starts at 0 ( no cards ), ends at 6 ( 6 slots )
-	liberalBoard uint8 // starts at 0 ( no cards ), ends at 5 ( 5 slots )
+	mut 			sync.RWMutex
+	id 				int
+	players         []Player
+	deck            Deck
+	playersMap      map[string]*Player // maps discord ids to players
+	president		*Player
+	chancellor		*Player
+	voteResult		uint8
+	voted		    Utils.Set
+	lastElected     Utils.Set          // term limits for last chancellor and last president
+	executed        Utils.Set          // pointer to players who died
+	turnNum         uint8              // used to calculate next president
+	turnStage       Stage          	   // used to track the the turnNum's development
+	electionTracker uint8              // cycles from 0 to 3
+	fascistBoard    uint8              // starts at 0 ( no cards ), ends at 6 ( 6 slots )
+	liberalBoard    uint8              // starts at 0 ( no cards ), ends at 5 ( 5 slots )
 }
+
+type Stage int8
+const (
+	UNINITIALIZED Stage = -1
+	PRESIDENT_NEEDED Stage = 0
+	CHANCELLOR_NEEDED Stage = 1
+	GOVERNMENT_ELECTION Stage = 2
+	PRESIDENT_POLICIES Stage = 3
+	CHANCELLOR_POLICIES Stage = 4
+	VETO_VOTE Stage = 5
+	SPECIAL_POWER Stage = 6
+)
