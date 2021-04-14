@@ -97,24 +97,25 @@ type Deck struct {
 
 type Game struct {
 	game
-	lock			sync.RWMutex
+	lock sync.RWMutex
 }
 
 type game struct {
-	id          int
-	players     []Player
-	deck        Deck
-	playersMap  map[string]*Player // maps discord ids to players
-	president   *Player
-	chancellor  *Player
-	votes       map[*Player]bool
-	lastElected Utils.Set // term limits for last chancellor and last president
-	executed    Utils.Set // pointer to players who died
-	turnNum     uint8     // used to calculate next president
-	turnStage       Stage     // used to track the the turnNum's development
-	electionTracker uint8     // cycles from 0 to 3
-	fascistBoard    uint8     // starts at 0 ( no cards ), ends at 6 ( 6 slots )
-	liberalBoard    uint8     // starts at 0 ( no cards ), ends at 5 ( 5 slots )
+	id              int                // id of the game
+	players         []Player           // collecion of the players and roles
+	deck            Deck               // deck for the game
+	playersMap      map[string]*Player // maps discord ids to players
+	president       *Player            // current president (elected or candidate)
+	chancellor      *Player            // current president (elected or candidate)
+	votes           map[*Player]bool   // votes for the government
+	policyChoice    []Policy           // deck to hold the policies that need to be enacted
+	lastElected     Utils.Set          // term limits for last chancellor and last president
+	executed        Utils.Set          // pointer to players who died
+	turnNum         uint8              // used to calculate next president
+	turnStage       Stage              // used to track the the turnNum's development
+	electionTracker uint8              // cycles from 0 to 3
+	fascistBoard    uint8              // starts at 0 ( no cards ), ends at 6 ( 6 slots )
+	liberalBoard    uint8              // starts at 0 ( no cards ), ends at 5 ( 5 slots )
 }
 
 type Stage int8
@@ -133,7 +134,9 @@ const (
 type ElectionFeedback int8
 
 const (
-	ACK    ElectionFeedback = 0 // the vote was registered
-	REJECT ElectionFeedback = 1 // the vote was registered and the election was rejected
-	PASS   ElectionFeedback = 2 // the vote was registered and the election was approved
+	ACK              ElectionFeedback = 0 // the vote was registered
+	REJECT           ElectionFeedback = 1 // the vote was registered and the election was rejected
+	REJECT_AND_FORCE ElectionFeedback = 2 // the vote was registered, the election was rejected and a policy was drawn
+	PASS             ElectionFeedback = 3 // the vote was registered and the election was approved
+
 )

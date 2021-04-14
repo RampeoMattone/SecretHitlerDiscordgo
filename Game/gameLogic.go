@@ -12,42 +12,17 @@ func init() {
 	rand.Seed(time.Now().Unix())
 }
 
-// newDeck generates a new deck for a game and shuffles it ahead of time
-func newDeck() Deck {
-	var d = Deck{
-		pos: 0,
-		arr: [17]Policy{
-			LIBERAL_POLICY, LIBERAL_POLICY, LIBERAL_POLICY, LIBERAL_POLICY, LIBERAL_POLICY, LIBERAL_POLICY,
-		},
-	}
-	d.shuffle()
-	return d
-}
-
-// shuffle shuffles the elements of the deck pseudorandomically
-func (d Deck) shuffle() {
-	rand.Shuffle(17, func(i, j int) {
-		d.arr[i], d.arr[j] = d.arr[j], d.arr[i]
-	})
-}
-
 // NewGame creates the basic structure for the game to let others join using the Join command
 func NewGame() Game {
 	return Game{
-		game: game {
-			deck:            newDeck(),
-			players:         make([]Player, 10),
-			playersMap:      make(map[string]*Player, 10),
-			lastElected:     Utils.Set{},
-			executed:        Utils.Set{},
-			turnNum:         0,
-			turnStage:       UNINITIALIZED,
-			electionTracker: 0,
-			fascistBoard:    0,
-			liberalBoard:    0,
+		game: game{
+			deck:        newDeck(),
+			players:     make([]Player, 10),
+			lastElected: Utils.Set{},
+			executed:    Utils.Set{},
+			turnStage:   UNINITIALIZED,
 		},
 		lock: sync.RWMutex{},
-
 	}
 }
 
@@ -139,6 +114,7 @@ func (G *Game) NewChancellor(usr string, c string) bool {
 	if g.turnStage == CHANCELLOR_NEEDED && g.president.id == usr {
 		g.turnStage = GOVERNMENT_ELECTION
 		g.chancellor = g.playersMap[c]
+		g.votes = make(map[*Player]bool, 10)
 		return true
 	} else {
 		return false // empty string means error
@@ -168,13 +144,56 @@ func (G *Game) GovernmentCastVote(usr string, v bool) ElectionFeedback {
 				g.lastElected.Clear()
 				g.lastElected.AddAll(g.president, g.chancellor)
 				g.turnStage = PRESIDENT_POLICIES
-				// TODO add deck interaction for the president
+				g.policyChoice = g.deck.draw(3)
 				return PASS
 			} else { // election failed
+				// election tracker forces policies
+				if g.electionTracker == 2 {
+					g.electionTracker = 0         // reset the tracker
+					var policies = g.deck.draw(1) // draw the policy
+					var policy = policies[0]
+					if policy == LIBERAL_POLICY {
+						g.liberalBoard++
+					} else {
+						g.fascistBoard++
+					}
+					return REJECT_AND_FORCE
+				}
+				g.electionTracker++
 				return REJECT
 			}
 		}
 		return ACK
 	}
 	return ElectionFeedback(ERROR)
+}
+
+// Choice will remove the chosen card from the policyChoice deck
+func (G *Game) Choice(c uint8, s Stage) bool {
+	G.lock.Lock()
+	defer G.lock.Unlock()
+	var g = G.game
+	if g.turnStage == s {
+		switch s {
+		case PRESIDENT_POLICIES:
+			if c > 2 {
+				return false
+			}
+			g.turnStage = CHANCELLOR_POLICIES
+		case CHANCELLOR_POLICIES:
+			if c > 1 {
+				return false
+			}
+			if g.fascistBoard >= 5 {
+				g.turnStage = VETO_VOTE
+			} else {
+				g.turnStage = SPECIAL_POWER
+			}
+		default:
+			return false
+		}
+		g.policyChoice = append(g.policyChoice[:c], g.policyChoice[c+1:]...)
+		return true
+	}
+	return false
 }
