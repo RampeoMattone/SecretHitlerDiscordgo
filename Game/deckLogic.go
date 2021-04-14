@@ -31,7 +31,7 @@ func (d Deck) draw(n uint8) []Policy {
 		r[i] = d.arr[d.pos]
 		d.pos++
 	}
-	// "If there are fewer than three tiles remaining in the policy deck at the end of a Legislative Session,
+	// "If there are fewer than three tiles remaining In the policy deck at the end of a Legislative Session,
 	// they are shuffled with the Discard pile to create a new policy deck. Unused policy tiles are not revealed."
 	if d.pos > 14 {
 		d.shuffle()

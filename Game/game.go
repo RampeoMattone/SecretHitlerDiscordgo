@@ -3,7 +3,6 @@ package Game
 
 import (
 	"SecretHitlerDiscordgo/Utils"
-	"sync"
 )
 
 /*
@@ -96,7 +95,7 @@ type Game struct {
 	In  chan interface{}
 	Out chan interface{}
 	game
-	Lock sync.Mutex
+	// Lock sync.Mutex
 }
 
 type game struct {

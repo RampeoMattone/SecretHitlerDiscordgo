@@ -7,8 +7,8 @@ import (
 
 // GovernmentCastVote will cast a vote for the election
 func (G *Game) governmentCastVote(usr string, v bool) ElectionFeedback {
-	G.Lock.Lock()
-	defer G.Lock.Unlock()
+	// G.Lock.Lock() // todo test if needed
+	// defer G.Lock.Unlock() // todo test if needed
 	var (
 		g     = G.game
 		p     = g.PlayersMap[usr] // pointer to the player
@@ -47,8 +47,8 @@ func (G *Game) governmentCastVote(usr string, v bool) ElectionFeedback {
 
 // policyChoice will remove the chosen card from the policyChoice deck
 func (G *Game) policyChoice(c *string, s uint8) PolicyFeedback {
-	G.Lock.Lock()
-	defer G.Lock.Unlock()
+	// G.Lock.Lock() // todo test if needed
+	// defer G.Lock.Unlock() // todo test if needed
 	var g = G.game
 	switch g.turnStage {
 	case PresidentPolicies:
@@ -82,8 +82,8 @@ func (g game) newPresident() { // we have to use a channel because the function 
 
 // enactPolicy enacts a policy and echoes Out the winning party if there is one
 func (G *Game) enactPolicy() (DidAnyoneWin, SpecialPowers) {
-	G.Lock.Lock()
-	defer G.Lock.Unlock()
+	// G.Lock.Lock() // todo test if needed
+	// defer G.Lock.Unlock() // todo test if needed
 	var g = G.game
 	return g.enactPolicyUnsafe()
 }

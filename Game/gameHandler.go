@@ -3,7 +3,6 @@ package Game
 import (
 	"SecretHitlerDiscordgo/Utils"
 	"math/rand"
-	"sync"
 	"time"
 )
 
@@ -18,7 +17,7 @@ func NewGame() *Game {
 	G := Game{
 		Out:  make(chan interface{}),
 		In:   make(chan interface{}),
-		Lock: sync.Mutex{},
+		// Lock: sync.Mutex{}, // todo test if needed
 		game: game{
 			Players:   make([]Player, 10),
 			turnStage: Uninitialized,
@@ -53,7 +52,7 @@ func (G *Game) Handler() {
 				}
 				g.PlayersMap[*id] = &p
 				g.Players = append(g.Players, p)
-				G.Out <- Ack(General)
+				G.Out <- Ack{}
 			} else {
 				G.Out <- Error(WrongPhase)
 			}
@@ -72,7 +71,7 @@ func (G *Game) Handler() {
 					continue
 				}
 				g.newPresident()
-				G.Out <- Ack(General)
+				G.Out <- Ack{}
 			} else {
 				G.Out <- Error(WrongPhase)
 			}
@@ -83,7 +82,7 @@ func (G *Game) Handler() {
 					g.Chancellor = v
 					g.Votes = make(map[*Player]bool, 10)
 					g.turnStage = GovernmentElection
-					G.Out <- Ack(General)
+					G.Out <- Ack{}
 				} else {
 					G.Out <- Error(InvalidInput)
 				}
@@ -96,25 +95,21 @@ func (G *Game) Handler() {
 				f := G.governmentCastVote(*e.caller, e.vote)
 				switch f {
 				case VoteAck:
-					// todo ack the vote In output
+					G.Out <- Ack{}
 				case VoteError:
-					// todo send error (invalid vote)
+					G.Out <- Error(InvalidInput)
 				case Reject:
-					// todo ack the vote In output
-					// todo warn that the vote has failed
+					G.Out <- GovernmentElectionFailed{ ForcedPolicy: false }
 					g.newPresident()
 				case RejectAndForce:
 					g.ElectionTracker = 0           // reset the tracker
 					g.policyChoice = g.deck.draw(1) // draw the policy
 					g.enactPolicyUnsafe()           // todo handle return types and win conditions
-
-					// todo ack the vote In output
-					// todo warn that the vote has failed
+					G.Out <- GovernmentElectionFailed{ ForcedPolicy: true }
 					g.newPresident()
 				case Pass:
-					// todo ack the vote In output
 					g.turnStage = PresidentPolicies
-					// todo warn that the vote has passed
+					G.Out <- GovernmentElectionSuccess{}
 				}
 			} else {
 				G.Out <- Error(WrongPhase)
@@ -125,15 +120,19 @@ func (G *Game) Handler() {
 			case PolicyAck:
 				switch g.turnStage {
 				case ChancellorPolicies:
-					// todo send confirmation of vote and chancellor vote request
+					G.Out <- Ack{}
 				case VetoVote:
-					// todo send confirmation of vote and veto request
+					G.Out <- StartVeto{}
 				case VoteEnaction:
-					// todo send confirmation of vote
-					G.enactPolicy() // todo handle return types and win conditions
+					win, power := G.enactPolicy()
+					G.Out <- PolicyEnacted{
+						win: win,
+						power: power,
+					}
+					// todo if won, close the loop
 				}
 			case PolicyError:
-				// todo send error
+				G.Out <- Error(WrongPhase)
 			}
 		case PolicyVeto:
 			if g.turnStage == VetoVote {
@@ -142,30 +141,45 @@ func (G *Game) Handler() {
 					Chancellor) {
 					vetoVoted.Add(*e.caller)
 					vetoResult++
-					// todo add veto ack
 					if len(vetoVoted) == 2 {
 						if vetoResult == 2 {
-							G.Lock.Lock()
-							// election tracker forces policies
-							if g.ElectionTracker == 2 {
-								g.ElectionTracker = 0           // reset the tracker
-								g.policyChoice = g.deck.draw(1) // draw the policy
-								g.enactPolicyUnsafe()           // todo handle win conditions
-							}
-							g.ElectionTracker++
+							// G.Lock.Lock() // todo test if needed
 							g.newPresident()
-							G.Lock.Unlock()
-							// todo warn that the government vetoed
+							if g.ElectionTracker == 2 {
+								g.ElectionTracker = 0
+								g.policyChoice = g.deck.draw(1)
+								win, power := g.enactPolicyUnsafe()
+								G.Out <- VetoResult{
+									success: true,
+									force: true,
+									enacted: PolicyEnacted{
+										win: win,
+										power: power,
+									},
+								}
+							} else {
+								g.ElectionTracker++
+								G.Out <- VetoResult{
+									success: true,
+									force: false,
+								}
+							}
+							// G.Lock.Unlock() // todo test if needed
 						} else {
-							G.enactPolicy()
-							g.turnStage = SpecialPower
-							// todo warn that the government failed the veto vote
+							win, power := G.enactPolicy()
+							G.Out <- VetoResult{
+								success: false,
+								enacted: PolicyEnacted{
+									win: win,
+									power: power,
+								},
+							}
 						}
 					} else {
-						//todo send veto received
+						G.Out <- Ack{}
 					}
 				} else {
-					// todo send error
+					G.Out <- Error(WrongPhase)
 				}
 			}
 		}
