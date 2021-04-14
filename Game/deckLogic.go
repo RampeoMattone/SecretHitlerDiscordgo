@@ -9,7 +9,7 @@ func newDeck() Deck {
 	var d = Deck{
 		pos: 0,
 		arr: [17]Policy{
-			LIBERAL_POLICY, LIBERAL_POLICY, LIBERAL_POLICY, LIBERAL_POLICY, LIBERAL_POLICY, LIBERAL_POLICY,
+			LiberalPolicy, LiberalPolicy, LiberalPolicy, LiberalPolicy, LiberalPolicy, LiberalPolicy,
 		},
 	}
 	d.shuffle()

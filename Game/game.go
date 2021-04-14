@@ -13,7 +13,7 @@ Rules recap:
 		- Hitler is assassinated
 	Liberals win if one of the following happens:
 		- six fascist laws are enacted
-		- Hitler is elected chancellor after the third fascist policy is enacted
+		- Hitler is elected Chancellor after the third fascist policy is enacted
 
 Start:
 			# PLAYERS			5 		6 		7 		8	 	9	 	10
@@ -23,25 +23,25 @@ Start:
 
 Game Cycle:
 	- the next player in queue gets the presidential title
-	- the president chooses a candidate for the role of chancellor ( out of the non term-limited players )
-	- all players vote to elect the president + chancellor pair ( Yes / No )
-	* if the vote is a tie or a majority of votes are No:
+	- the President chooses a candidate for the role of Chancellor ( out of the non term-limited Players )
+	- all Players vote to elect the President + Chancellor pair ( Yes / No )
+	* if the vote is a tie or a majority of Votes are No:
 		- advance the election tracker by one step
 		- check if the election tracker is on its last slot
 		* if it's on the last slot:
 			- the next Policy is revealed and enacted ( any power granted by this Policy is ignored )
 			- the election tracker resets
 			- any existing term-limits are forgotten
-	* if the majority of votes are Yes:
-		- term-limits are updated for the new president and chancellor
-		* If three or more Fascist Policies have been enacted and the chancellor is Hitler
+	* if the majority of Votes are Yes:
+		- term-limits are updated for the new President and Chancellor
+		* If three or more Fascist Policies have been enacted and the Chancellor is Hitler
 			- fascists win
-		- deafen and mute both the chancellor and the president
-		- reveal three policies to the president
-		- let the president discard one of the three
-		- let the chancellor choose which of the two remaining policies to enact
+		- deafen and mute both the Chancellor and the President
+		- reveal three policies to the President
+		- let the President discard one of the three
+		- let the Chancellor choose which of the two remaining policies to enact
 		* if five fascists policies have been elected ( veto power )
-			- ask both the chancellor and the president whether they want to veto the policy election
+			- ask both the Chancellor and the President whether they want to veto the policy election
 			* if both agree
 				- discard the remaining policy instead of enacting it
 				- advance the election tracker by one step
@@ -50,44 +50,41 @@ Game Cycle:
 							- the next Policy is revealed and enacted ( any power granted by this Policy is ignored )
 							- the election tracker resets
 							- any existing term-limits are forgotten
-		- undeafen and unmute both the chancellor and the president
+		- undeafen and unmute both the Chancellor and the President
 		* if the enacted policy grants a presidential power
 			+ investigate loyalty
-				- the president chooses who to investigate ( a player may only be investigated once per game )
+				- the President chooses who to investigate ( a player may only be investigated once per game )
 			+ call special election
-				- the president chooses any other player to be the next president ( even those that are term-limited )
-				- the round starts again without altering the queue for next president
+				- the President chooses any other player to be the next President ( even those that are term-limited )
+				- the round starts again without altering the queue for next President
 				- the next round will pick up from the next player in queue
 			+ policy peek
-				- the president will see the top three cards in the deck
+				- the President will see the top three cards in the deck
 			+ execution
-				- the president chooses a player to kill
+				- the President chooses a player to kill
 				* if the player was Hitler
 					- liberals win
 				- the player is removed from the active members of the game and may only spectate
 */
 
-const ERROR int8 = -1 // general error
-
 type Role uint8
 
 const (
-	LIBERAL_ROLE Role = 0
-	FASCIST_ROLE Role = 1
-	HITLER_ROLE  Role = 2
+	LiberalRole Role = 0
+	FascistRole Role = 1
+	HitlerRole  Role = 2
 )
 
 type Policy bool
 
 const (
-	LIBERAL_POLICY Policy = true
-	FASCIST_POLICY Policy = false
+	LiberalPolicy Policy = true
+	FascistPolicy Policy = false
 )
 
 type Player struct {
 	id   string
 	role Role
-	name string
 }
 
 type Deck struct {
@@ -96,47 +93,85 @@ type Deck struct {
 }
 
 type Game struct {
+	in  chan interface{}
+	out chan interface{}
 	game
-	lock sync.RWMutex
+	lock sync.Mutex
 }
 
 type game struct {
-	id              int                // id of the game
-	players         []Player           // collecion of the players and roles
-	deck            Deck               // deck for the game
-	playersMap      map[string]*Player // maps discord ids to players
-	president       *Player            // current president (elected or candidate)
-	chancellor      *Player            // current president (elected or candidate)
-	votes           map[*Player]bool   // votes for the government
-	policyChoice    []Policy           // deck to hold the policies that need to be enacted
-	lastElected     Utils.Set          // term limits for last chancellor and last president
-	executed        Utils.Set          // pointer to players who died
-	turnNum         uint8              // used to calculate next president
-	turnStage       Stage              // used to track the the turnNum's development
-	electionTracker uint8              // cycles from 0 to 3
-	fascistBoard    uint8              // starts at 0 ( no cards ), ends at 6 ( 6 slots )
-	liberalBoard    uint8              // starts at 0 ( no cards ), ends at 5 ( 5 slots )
+	// MUTEXED - Public
+	ElectionTracker uint8            // cycles from 0 to 3
+	FascistTracker  uint8            // starts at 0 ( no cards ), ends at 6 ( 6 slots )
+	LiberalTracker  uint8            // starts at 0 ( no cards ), ends at 5 ( 5 slots )
+	President       *Player          // current President (elected or candidate)
+	Chancellor      *Player          // current President (elected or candidate)
+	Votes           map[*Player]bool // Votes for the government
+
+	// UNMUTEXED - Public (they remain static since the start of the game)
+	Id         int                // Id of the game
+	Players    []Player           // collecion of the Players and roles
+	PlayersMap map[string]*Player // maps discord ids to Players
+
+	// UNMUTEXED - private
+	deck         Deck      // deck for the game
+	policyChoice []Policy  // deck to hold the policies that need to be enacted
+	lastElected  Utils.Set // term limits for last Chancellor and last President
+	executed     Utils.Set // pointer to Players who died
+	turnNum      uint8     // used to calculate next President
+	turnStage    Stage     // used to track the the turnNum's development
 }
 
 type Stage int8
 
 const (
-	UNINITIALIZED       Stage = -1
-	PRESIDENT_NEEDED    Stage = 0
-	CHANCELLOR_NEEDED   Stage = 1
-	GOVERNMENT_ELECTION Stage = 2
-	PRESIDENT_POLICIES  Stage = 3
-	CHANCELLOR_POLICIES Stage = 4
-	VETO_VOTE           Stage = 5
-	SPECIAL_POWER       Stage = 6
+	Uninitialized Stage = iota
+	ChancellorNeeded
+	GovernmentElection
+	PresidentPolicies
+	ChancellorPolicies
+	VetoVote
+	VoteEnaction
+	SpecialPower
 )
 
 type ElectionFeedback int8
 
 const (
-	ACK              ElectionFeedback = 0 // the vote was registered
-	REJECT           ElectionFeedback = 1 // the vote was registered and the election was rejected
-	REJECT_AND_FORCE ElectionFeedback = 2 // the vote was registered, the election was rejected and a policy was drawn
-	PASS             ElectionFeedback = 3 // the vote was registered and the election was approved
-
+	VoteError ElectionFeedback = iota
+	VoteAck
+	Reject         // the vote was registered and the election was rejected
+	RejectAndForce // the vote was registered, the election was rejected and a policy was drawn
+	Pass           // the vote was registered and the election was approved
 )
+
+type PolicyFeedback int8
+
+const (
+	PolicyError PolicyFeedback = iota
+	PolicyAck
+)
+
+type DidAnyoneWin int8
+
+const (
+	NobodyWon DidAnyoneWin = iota
+	FascistsWon
+	LiberalsWon
+)
+
+type SpecialPowers int8
+
+const (
+	Nothing SpecialPowers = iota
+	Peek
+	Investigate
+	Election
+	Execution
+)
+
+var powersTable = [3][6]SpecialPowers{
+	{Nothing	, Nothing	 , Peek	   , Execution, Execution, Nothing},
+	{Nothing	, Investigate, Election, Execution, Execution, Nothing},
+	{Investigate, Investigate, Election, Execution, Execution, Nothing},
+}
