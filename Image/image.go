@@ -1,6 +1,7 @@
-package Game
+package image
 
 import (
+	"SecretHitlerDiscordgo/Game"
 	"github.com/bwmarrin/discordgo"
 	"github.com/bwmarrin/lit"
 	"github.com/fogleman/gg"
@@ -99,7 +100,7 @@ func init() {
 // DownloadAvatar downloads avatar for a given user if it doesn't exist
 func DownloadAvatar(u *discordgo.User) {
 	// If the avatar already exist, just return
-	path := "./avatars/" + u.ID + ".png"
+	path := "./avatars/" + u.ID + "-" + u.Avatar + ".png"
 	_, err := os.Stat(path)
 	if os.IsExist(err) {
 		return
@@ -129,31 +130,27 @@ func DownloadAvatar(u *discordgo.User) {
 }
 
 // DrawFascistBoard draws the fascist board
-func (G *Game) DrawFascistBoard() *gg.Context {
-	G.lock.RLock()
-	defer G.lock.RUnlock()
-
+func DrawFascistBoard(G *Game.Game) *gg.Context {
 	// Create new blank image with boardHeight and boardWidth dimensions
 	img := gg.NewContext(boardHeight, boardWidth)
 
 	// Use the appropriate board type
-	switch len(G.game.players) {
+	switch len(G.Players) {
 	case 7, 8:
-
 		img.DrawImage(images["fascistBoard78"], 0, 0)
 		break
-	case 9, 10:
 
+	case 9, 10:
 		img.DrawImage(images["fascistBoard910"], 0, 0)
 		break
-	default:
 
+	default:
 		img.DrawImage(images["fascistBoard56"], 0, 0)
 	}
 
 	// Draw the policy card
 	var i uint8
-	for i = 0; i < G.game.fascistBoard; i++ {
+	for i = 0; i < G.FascistTracker; i++ {
 		img.DrawImage(images["fascistPolicy"], fascistX+fascistOffset*int(i), fascistY)
 	}
 
@@ -161,10 +158,7 @@ func (G *Game) DrawFascistBoard() *gg.Context {
 }
 
 // DrawLiberalBoard draws the liberal board
-func (G *Game) DrawLiberalBoard() *gg.Context {
-	G.lock.RLock()
-	defer G.lock.RUnlock()
-
+func DrawLiberalBoard(G *Game.Game) *gg.Context {
 	// Create new blank image with boardHeight and boardWidth dimensions
 	img := gg.NewContext(boardHeight, boardWidth)
 
@@ -173,15 +167,15 @@ func (G *Game) DrawLiberalBoard() *gg.Context {
 
 	// Draw the policy cards
 	var i uint8
-	for i = 0; i < G.game.liberalBoard; i++ {
+	for i = 0; i < G.LiberalTracker; i++ {
 		img.DrawImage(images["liberalPolicy"], liberalX+liberalOffset*int(i), liberalY)
 	}
 
 	// And the election tracker
-	if G.game.electionTracker > 0 {
+	if G.ElectionTracker > 0 {
 		// The circles aren't centered by a few pixels...
 		var offset float64
-		switch G.game.electionTracker {
+		switch G.ElectionTracker {
 		case 1:
 			offset = 1.5
 			break
@@ -190,7 +184,7 @@ func (G *Game) DrawLiberalBoard() *gg.Context {
 		}
 
 		// Draw the polygon
-		img.DrawRegularPolygon(6, electionTrackerX+electionTrackerOffset*float64(G.game.electionTracker-1)+offset, electionTrackerY, electionTrackerRadius, 0.0)
+		img.DrawRegularPolygon(6, electionTrackerX+electionTrackerOffset*float64(G.ElectionTracker-1)+offset, electionTrackerY, electionTrackerRadius, 0.0)
 		// Set color
 		img.SetRGB(1, 0, 0)
 		// File the polygon
@@ -201,22 +195,19 @@ func (G *Game) DrawLiberalBoard() *gg.Context {
 }
 
 // Draws the base image for a given game with all of the avatars
-func (G *Game) drawBase() *gg.Context {
-	G.lock.RLock()
-	defer G.lock.RUnlock()
-
+func drawBase(G *Game.Game) *gg.Context {
 	img := gg.NewContext(statusWidth, statusHeight)
 
-	for i, p := range G.game.players {
+	for i, p := range G.Players {
 		// If it's not loaded, load the image
-		if _, ok := avatarImageCache[p.id]; !ok {
-			loadAvatar(p.id)
+		if _, ok := avatarImageCache[p.Id]; !ok {
+			loadAvatar(p.Id)
 		}
 
 		if i < 5 {
-			img.DrawImageAnchored(avatarImageCache[p.id], 200+(i*300), 180, 0.5, 0.5)
+			img.DrawImageAnchored(avatarImageCache[p.Id], 200+(i*300), 180, 0.5, 0.5)
 		} else {
-			img.DrawImageAnchored(avatarImageCache[p.id], 200+((i-5)*300), 600, 0.5, 0.5)
+			img.DrawImageAnchored(avatarImageCache[p.Id], 200+((i-5)*300), 600, 0.5, 0.5)
 		}
 	}
 
@@ -224,18 +215,15 @@ func (G *Game) drawBase() *gg.Context {
 }
 
 // DrawStatus draws the status image for a given player
-func (G *Game) DrawStatus(forP *Player) *gg.Context {
-	G.lock.RLock()
-	defer G.lock.RUnlock()
-
-	if _, ok := baseImages[G.game.id]; !ok {
-		baseImages[G.game.id] = G.drawBase().Image()
+func DrawStatus(G *Game.Game, forP *Game.Player) *gg.Context {
+	if _, ok := baseImages[G.Id]; !ok {
+		baseImages[G.Id] = drawBase(G).Image()
 	}
 
 	// Create new image
 	img := gg.NewContext(statusWidth, statusHeight)
 	// Draw the base on top of it
-	img.DrawImage(baseImages[G.game.id], 0, 0)
+	img.DrawImage(baseImages[G.Id], 0, 0)
 
 	// Loads the font
 	if err := img.LoadFontFace("./fonts/Karantina-Regular.ttf", 96); err != nil {
@@ -243,9 +231,9 @@ func (G *Game) DrawStatus(forP *Player) *gg.Context {
 	}
 
 	var president, chancellor bool
-	for i, p := range G.game.players {
+	for i, p := range G.Players {
 		// Draws the president
-		if G.game.president.id == p.id {
+		if G.President.Id == p.Id {
 			img.SetRGB(0, 0, 0)
 
 			if i < 5 {
@@ -256,7 +244,7 @@ func (G *Game) DrawStatus(forP *Player) *gg.Context {
 			president = true
 		} else {
 			// Draws the chancellor
-			if G.game.chancellor.id == p.id {
+			if G.Chancellor.Id == p.Id {
 				img.SetRGB(0, 0, 0)
 
 				if i < 5 {
@@ -274,11 +262,10 @@ func (G *Game) DrawStatus(forP *Player) *gg.Context {
 		}
 	}
 
-
-	if forP.role == FASCIST_ROLE || (forP.role == HITLER_ROLE && len(G.game.players) <= 6) {
-		for i, p := range G.game.players {
-			switch p.role {
-			case FASCIST_ROLE:
+	if forP.Role == Game.FascistRole || (forP.Role == Game.HitlerRole && len(G.Players) <= 6) {
+		for i, p := range G.Players {
+			switch p.Role {
+			case Game.FascistRole:
 				if i < 5 {
 					img.DrawImage(images["fascistRole"], 250+(i*300), 0)
 				} else {
@@ -286,7 +273,7 @@ func (G *Game) DrawStatus(forP *Player) *gg.Context {
 				}
 				break
 
-			case HITLER_ROLE:
+			case Game.HitlerRole:
 				if i < 5 {
 					img.DrawImage(images["hitlerRole"], 250+(i*300), 0)
 				} else {

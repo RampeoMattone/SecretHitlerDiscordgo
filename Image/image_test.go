@@ -1,9 +1,9 @@
-package Game
+package image
 
 import (
+	"SecretHitlerDiscordgo/Game"
 	"github.com/bwmarrin/discordgo"
 	"os"
-	"sync"
 	"testing"
 )
 
@@ -13,26 +13,18 @@ func init() {
 }
 
 func TestDrawFascistBoard(t *testing.T) {
-	g := Game{
-		game: game{
-			fascistBoard: 6,
-		},
-		lock: sync.RWMutex{},
-	}
+	g := Game.NewGame()
+	g.FascistTracker = 6
 
-	g.DrawFascistBoard().SavePNG("./temp/fascist-3.png")
+	DrawFascistBoard(g).SavePNG("./temp/fascist-3.png")
 }
 
 func TestDrawLiberalBoard(t *testing.T) {
-	g := Game{
-		game: game{
-			electionTracker: 3,
-			liberalBoard:    5,
-		},
-		lock: sync.RWMutex{},
-	}
+	g := Game.NewGame()
+	g.ElectionTracker = 3
+	g.LiberalTracker = 5
 
-	g.DrawLiberalBoard().SavePNG("./temp/liberal-3-2.png")
+	DrawLiberalBoard(g).SavePNG("./temp/liberal-3-2.png")
 }
 
 func TestDrawStatus(t *testing.T) {
@@ -80,37 +72,32 @@ func TestDrawStatus(t *testing.T) {
 			},
 		}
 
-		players = make([]Player, 8)
+		g = Game.NewGame()
 	)
+
+	g.Players = make([]Game.Player, 8)
 
 	for i, u := range users {
 		DownloadAvatar(&u)
-		players[i] = Player{
-			id:   u.ID,
-			role: 0,
-			name: u.Username,
+		g.Players[i] = Game.Player{
+			Id:   u.ID,
+			Role: 0,
 		}
 	}
 
-	players[0].role = FASCIST_ROLE
-	players[1].role = FASCIST_ROLE
-	players[2].role = HITLER_ROLE
-	players[3].role = LIBERAL_ROLE
-	players[4].role = LIBERAL_ROLE
-	players[5].role = FASCIST_ROLE
-	players[6].role = LIBERAL_ROLE
-	players[7].role = FASCIST_ROLE
+	g.Players[0].Role = Game.FascistRole
+	g.Players[1].Role = Game.FascistRole
+	g.Players[2].Role = Game.HitlerRole
+	g.Players[3].Role = Game.LiberalRole
+	g.Players[4].Role = Game.LiberalRole
+	g.Players[5].Role = Game.FascistRole
+	g.Players[6].Role = Game.LiberalRole
+	g.Players[7].Role = Game.FascistRole
 
-	g := Game{
-		game: game{
-			players:    players,
-			chancellor: &players[0],
-			president:  &players[5],
-		},
-		lock: sync.RWMutex{},
-	}
+	g.Chancellor = &g.Players[0]
+	g.President = &g.Players[5]
 
-	g.DrawStatus(&g.players[2]).SavePNG("./temp/statusHitler.png")
-	g.DrawStatus(&g.players[0]).SavePNG("./temp/statusFascist.png")
-	g.DrawStatus(&g.players[3]).SavePNG("./temp/statusLiberal.png")
+	DrawStatus(g, &g.Players[2]).SavePNG("./temp/statusHitler.png")
+	DrawStatus(g, &g.Players[0]).SavePNG("./temp/statusFascist.png")
+	DrawStatus(g, &g.Players[3]).SavePNG("./temp/statusLiberal.png")
 }
