@@ -35,7 +35,7 @@ func TestDrawLiberalBoard(t *testing.T) {
 	g.DrawLiberalBoard().SavePNG("./temp/liberal-3-2.png")
 }
 
-func TestDownloadAvatar(t *testing.T) {
+func TestDrawStatus(t *testing.T) {
 	var (
 		users = []discordgo.User{
 			{
@@ -68,9 +68,19 @@ func TestDownloadAvatar(t *testing.T) {
 				Username: "Michele Bolla",
 				Avatar:   "0656e7420082e5adaabe2afe7afb4244",
 			},
+			{
+				ID:       "271001798473416704",
+				Username: "Xx_DNS_xX",
+				Avatar:   "e77e1dbc885595545f47c74bdda6dec0",
+			},
+			{
+				ID:       "145874051032678400",
+				Username: "slashtube",
+				Avatar:   "ee2bc862adc078bd5814ba4bbb2d96f5",
+			},
 		}
 
-		players = make([]Player, 6)
+		players = make([]Player, 8)
 	)
 
 	for i, u := range users {
@@ -82,19 +92,25 @@ func TestDownloadAvatar(t *testing.T) {
 		}
 	}
 
-	players[0].role = HITLER_ROLE
+	players[0].role = FASCIST_ROLE
 	players[1].role = FASCIST_ROLE
-	players[2].role = FASCIST_ROLE
+	players[2].role = HITLER_ROLE
 	players[3].role = LIBERAL_ROLE
 	players[4].role = LIBERAL_ROLE
-	players[5].role = LIBERAL_ROLE
+	players[5].role = FASCIST_ROLE
+	players[6].role = LIBERAL_ROLE
+	players[7].role = FASCIST_ROLE
 
 	g := Game{
 		game: game{
-			players: players,
+			players:    players,
+			chancellor: &players[0],
+			president:  &players[5],
 		},
 		lock: sync.RWMutex{},
 	}
 
-	g.DrawStatus(&g.players[0]).SavePNG("./temp/status.png")
+	g.DrawStatus(&g.players[2]).SavePNG("./temp/statusHitler.png")
+	g.DrawStatus(&g.players[0]).SavePNG("./temp/statusFascist.png")
+	g.DrawStatus(&g.players[3]).SavePNG("./temp/statusLiberal.png")
 }
