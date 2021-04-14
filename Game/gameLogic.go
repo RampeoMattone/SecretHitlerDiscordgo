@@ -7,8 +7,8 @@ import (
 
 // GovernmentCastVote will cast a vote for the election
 func (G *Game) governmentCastVote(usr string, v bool) ElectionFeedback {
-	G.lock.Lock()
-	defer G.lock.Unlock()
+	G.Lock.Lock()
+	defer G.Lock.Unlock()
 	var (
 		g     = G.game
 		p     = g.PlayersMap[usr] // pointer to the player
@@ -47,17 +47,17 @@ func (G *Game) governmentCastVote(usr string, v bool) ElectionFeedback {
 
 // policyChoice will remove the chosen card from the policyChoice deck
 func (G *Game) policyChoice(c *string, s uint8) PolicyFeedback {
-	G.lock.Lock()
-	defer G.lock.Unlock()
+	G.Lock.Lock()
+	defer G.Lock.Unlock()
 	var g = G.game
 	switch g.turnStage {
 	case PresidentPolicies:
-		if s > 2 || *c != g.President.id {
+		if s > 2 || *c != g.President.Id {
 			return PolicyError
 		}
 		g.turnStage = ChancellorPolicies
 	case ChancellorPolicies:
-		if s > 1 || *c != g.Chancellor.id {
+		if s > 1 || *c != g.Chancellor.Id {
 			return PolicyError
 		}
 		if g.FascistTracker >= 5 {
@@ -73,22 +73,22 @@ func (G *Game) policyChoice(c *string, s uint8) PolicyFeedback {
 }
 
 // NewPresident at the start of a new turn, it will elect a new President and signal its userid via a channel
-func (g game) newPresident() { // we have to use a channel because the function is ran in a goroutine
+func (g game) newPresident() { // we have to use a channel because the function is ran In a goroutine
 	g.turnNum++
 	var p = g.Players[len(g.Players)%int(g.turnNum)]
 	g.President = &p
 	g.turnStage = ChancellorNeeded
 }
 
-// enactPolicy enacts a policy and echoes out the winning party if there is one
+// enactPolicy enacts a policy and echoes Out the winning party if there is one
 func (G *Game) enactPolicy() (DidAnyoneWin, SpecialPowers) {
-	G.lock.Lock()
-	defer G.lock.Unlock()
+	G.Lock.Lock()
+	defer G.Lock.Unlock()
 	var g = G.game
 	return g.enactPolicyUnsafe()
 }
 
-// enactPolicyUnsafe enacts a policy and echoes out the winning party if there is one
+// enactPolicyUnsafe enacts a policy and echoes Out the winning party if there is one
 func (g game) enactPolicyUnsafe() (DidAnyoneWin, SpecialPowers) {
 	switch g.policyChoice[0] {
 	case FascistPolicy:
@@ -126,11 +126,11 @@ func (g game) setRoles(f int) {
 			r = rand.Intn(10)
 		}
 		rSet.Add(r)                     // add the extracted number to the set
-		g.Players[r].role = FascistRole // set the player role
+		g.Players[r].Role = FascistRole // set the player Role
 	}
 	// set a player as HitlerRole
 	for rSet.Has(r) {
 		r = rand.Intn(10) // extract a random number
 	}
-	g.Players[r].role = HitlerRole // set the player role
+	g.Players[r].Role = HitlerRole // set the player Role
 }

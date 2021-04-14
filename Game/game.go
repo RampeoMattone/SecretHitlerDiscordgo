@@ -22,8 +22,8 @@ Start:
 	Fascists known by Hitler? 	Yes 	Yes 	No	 	No 		No 		No
 
 Game Cycle:
-	- the next player in queue gets the presidential title
-	- the President chooses a candidate for the role of Chancellor ( out of the non term-limited Players )
+	- the next player In queue gets the presidential title
+	- the President chooses a candidate for the Role of Chancellor ( Out of the non term-limited Players )
 	- all Players vote to elect the President + Chancellor pair ( Yes / No )
 	* if the vote is a tie or a majority of Votes are No:
 		- advance the election tracker by one step
@@ -57,9 +57,9 @@ Game Cycle:
 			+ call special election
 				- the President chooses any other player to be the next President ( even those that are term-limited )
 				- the round starts again without altering the queue for next President
-				- the next round will pick up from the next player in queue
+				- the next round will pick up from the next player In queue
 			+ policy peek
-				- the President will see the top three cards in the deck
+				- the President will see the top three cards In the deck
 			+ execution
 				- the President chooses a player to kill
 				* if the player was Hitler
@@ -83,8 +83,8 @@ const (
 )
 
 type Player struct {
-	id   string
-	role Role
+	Id   string
+	Role Role
 }
 
 type Deck struct {
@@ -93,10 +93,10 @@ type Deck struct {
 }
 
 type Game struct {
-	in  chan interface{}
-	out chan interface{}
+	In  chan interface{}
+	Out chan interface{}
 	game
-	lock sync.Mutex
+	Lock sync.Mutex
 }
 
 type game struct {
@@ -171,7 +171,7 @@ const (
 )
 
 var powersTable = [3][6]SpecialPowers{
-	{Nothing	, Nothing	 , Peek	   , Execution, Execution, Nothing},
-	{Nothing	, Investigate, Election, Execution, Execution, Nothing},
+	{Nothing, Nothing, Peek, Execution, Execution, Nothing},
+	{Nothing, Investigate, Election, Execution, Execution, Nothing},
 	{Investigate, Investigate, Election, Execution, Execution, Nothing},
 }

@@ -16,9 +16,9 @@ func init() {
 // NewGame creates the basic structure for the game to let others join using the Join command
 func NewGame() *Game {
 	G := Game{
-		out:  make(chan interface{}),
-		in:   make(chan interface{}),
-		lock: sync.Mutex{},
+		Out:  make(chan interface{}),
+		In:   make(chan interface{}),
+		Lock: sync.Mutex{},
 		game: game{
 			Players:   make([]Player, 10),
 			turnStage: Uninitialized,
@@ -35,27 +35,27 @@ func (G *Game) Handler() {
 	g := G.game
 	vetoVoted := Utils.Set{}
 	vetoResult := uint8(0)
-	defer close(G.out)
-	defer close(G.in)
+	defer close(G.Out)
+	defer close(G.In)
 	for {
-		in := <-G.in
+		in := <-G.In
 		switch in.(type) {
 		// Join the game
 		case Join:
 			if G.game.turnStage == Uninitialized {
 				id := in.(Join)
 				p := Player{
-					id: *id,
+					Id: *id,
 				}
 				if len(g.Players) > 10 {
-					G.out <- Error(LobbyFull)
+					G.Out <- Error(LobbyFull)
 					continue
 				}
 				g.PlayersMap[*id] = &p
 				g.Players = append(g.Players, p)
-				G.out <- Ack(General)
+				G.Out <- Ack(General)
 			} else {
-				G.out <- Error(WrongPhase)
+				G.Out <- Error(WrongPhase)
 			}
 		// Start the game
 		case Start:
@@ -68,27 +68,27 @@ func (G *Game) Handler() {
 				case 9, 10:
 					g.setRoles(3)
 				default:
-					G.out <- Error(NotEnoughPlayers)
+					G.Out <- Error(NotEnoughPlayers)
 					continue
 				}
 				g.newPresident()
-				G.out <- Ack(General)
+				G.Out <- Ack(General)
 			} else {
-				G.out <- Error(WrongPhase)
+				G.Out <- Error(WrongPhase)
 			}
 		case ElectChancellor:
 			e := in.(ElectChancellor)
-			if g.turnStage == ChancellorNeeded && g.President.id == *e.caller{
+			if g.turnStage == ChancellorNeeded && g.President.Id == *e.caller {
 				if v, ok := g.PlayersMap[*e.proposal]; ok && !g.lastElected.Has(*e.proposal) {
 					g.Chancellor = v
 					g.Votes = make(map[*Player]bool, 10)
 					g.turnStage = GovernmentElection
-					G.out <- Ack(General)
+					G.Out <- Ack(General)
 				} else {
-					G.out <- Error(InvalidInput)
+					G.Out <- Error(InvalidInput)
 				}
 			} else {
-				G.out <- Error(WrongPhase)
+				G.Out <- Error(WrongPhase)
 			}
 		case VoteGovernment:
 			if g.turnStage == GovernmentElection {
@@ -96,28 +96,28 @@ func (G *Game) Handler() {
 				f := G.governmentCastVote(*e.caller, e.vote)
 				switch f {
 				case VoteAck:
-					// todo ack the vote in output
+					// todo ack the vote In output
 				case VoteError:
 					// todo send error (invalid vote)
 				case Reject:
-					// todo ack the vote in output
+					// todo ack the vote In output
 					// todo warn that the vote has failed
 					g.newPresident()
 				case RejectAndForce:
-					g.ElectionTracker = 0       	   // reset the tracker
+					g.ElectionTracker = 0           // reset the tracker
 					g.policyChoice = g.deck.draw(1) // draw the policy
-					g.enactPolicyUnsafe() // todo handle return types and win conditions
+					g.enactPolicyUnsafe()           // todo handle return types and win conditions
 
-					// todo ack the vote in output
+					// todo ack the vote In output
 					// todo warn that the vote has failed
 					g.newPresident()
 				case Pass:
-					// todo ack the vote in output
+					// todo ack the vote In output
 					g.turnStage = PresidentPolicies
 					// todo warn that the vote has passed
 				}
 			} else {
-				G.out <- Error(WrongPhase)
+				G.Out <- Error(WrongPhase)
 			}
 		case PolicyChoice:
 			e := in.(PolicyChoice)
@@ -145,16 +145,16 @@ func (G *Game) Handler() {
 					// todo add veto ack
 					if len(vetoVoted) == 2 {
 						if vetoResult == 2 {
-							G.lock.Lock()
+							G.Lock.Lock()
 							// election tracker forces policies
 							if g.ElectionTracker == 2 {
-								g.ElectionTracker = 0       	   // reset the tracker
+								g.ElectionTracker = 0           // reset the tracker
 								g.policyChoice = g.deck.draw(1) // draw the policy
-								g.enactPolicyUnsafe() // todo handle win conditions
+								g.enactPolicyUnsafe()           // todo handle win conditions
 							}
 							g.ElectionTracker++
 							g.newPresident()
-							G.lock.Unlock()
+							G.Lock.Unlock()
 							// todo warn that the government vetoed
 						} else {
 							G.enactPolicy()
