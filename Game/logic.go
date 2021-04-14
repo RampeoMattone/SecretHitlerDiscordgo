@@ -34,23 +34,27 @@ func (d Deck) shuffle() {
 // NewGame creates the basic structure for the game to let others join using the Join command
 func NewGame() Game {
 	return Game{
-		deck:            newDeck(),
-		players:         make([]Player, 10),
-		playersMap:      make(map[string]*Player, 10),
-		lastElected:     Utils.Set{},
-		executed:        Utils.Set{},
-		turnNum:         0,
-		turnStage:       UNINITIALIZED,
-		electionTracker: 0,
-		fascistBoard:    0,
-		liberalBoard:    0,
-		mut:             sync.Mutex{},
+		game: game {
+			deck:            newDeck(),
+			players:         make([]Player, 10),
+			playersMap:      make(map[string]*Player, 10),
+			lastElected:     Utils.Set{},
+			executed:        Utils.Set{},
+			turnNum:         0,
+			turnStage:       UNINITIALIZED,
+			electionTracker: 0,
+			fascistBoard:    0,
+			liberalBoard:    0,
+		},
+		lock: sync.RWMutex{},
+
 	}
 }
 
-func (g *Game) Join(usr *discordgo.User) bool {
-	g.mut.Lock()
-	defer g.mut.Unlock()
+func (G *Game) Join(usr *discordgo.User) bool {
+	G.lock.Lock()
+	defer G.lock.Unlock()
+	var g = G.game
 	var p = Player{
 		id:   usr.ID,
 		role: LIBERAL_ROLE,
@@ -66,7 +70,7 @@ func (g *Game) Join(usr *discordgo.User) bool {
 }
 
 // setRoles sets one player as HITLER_ROLE and f players as FASCIST_ROLE
-func (g Game) setRoles(f int) {
+func (g game) setRoles(f int) {
 	var rSet = make(Utils.Set) // make a set to store numbers we extract
 	var r int                  // stores a random number
 	// set #f players as FASCIST_ROLE
@@ -88,9 +92,10 @@ func (g Game) setRoles(f int) {
 
 // Start is ran at the end of the join phase, once the admin has agreed to start
 // the function sets up the game's parts that can't be set up ahead of time
-func (g *Game) Start(out chan<- string) bool {
-	g.mut.Lock()
-	defer g.mut.Unlock()
+func (G *Game) Start(out chan<- string) bool {
+	G.lock.Lock()
+	defer G.lock.Unlock()
+	var g = G.game
 	if g.turnStage == UNINITIALIZED {
 		g.turnStage = PRESIDENT_NEEDED
 		switch len(g.players) {
@@ -103,7 +108,7 @@ func (g *Game) Start(out chan<- string) bool {
 		default:
 			return false
 		}
-		go g.NewPresident(out)
+		go G.NewPresident(out)
 	} else {
 		return false
 	}
@@ -111,9 +116,10 @@ func (g *Game) Start(out chan<- string) bool {
 }
 
 // NewPresident at the start of a new turn, it will elect a new president and signal its userid via a channel
-func (g *Game) NewPresident(out chan<- string) { // we have to use a channel because the function is ran in a goroutine
-	g.mut.Lock()
-	defer g.mut.Unlock()
+func (G *Game) NewPresident(out chan<- string) { // we have to use a channel because the function is ran in a goroutine
+	G.lock.Lock()
+	defer G.lock.Unlock()
+	var g = G.game
 	if g.turnStage == PRESIDENT_NEEDED {
 		g.turnStage = CHANCELLOR_NEEDED
 		g.turnNum++
@@ -126,9 +132,10 @@ func (g *Game) NewPresident(out chan<- string) { // we have to use a channel bec
 }
 
 // NewChancellor will try to propose a chancellor
-func (g *Game) NewChancellor(usr string, c string) bool {
-	g.mut.Lock()
-	defer g.mut.Unlock()
+func (G *Game) NewChancellor(usr string, c string) bool {
+	G.lock.Lock()
+	defer G.lock.Unlock()
+	var g = G.game
 	if g.turnStage == CHANCELLOR_NEEDED && g.president.id == usr {
 		g.turnStage = GOVERNMENT_ELECTION
 		g.chancellor = g.playersMap[c]
@@ -139,9 +146,10 @@ func (g *Game) NewChancellor(usr string, c string) bool {
 }
 
 // GovernmentCastVote will cast a vote for the election
-func (g *Game) GovernmentCastVote(usr string, v bool) ElectionFeedback {
-	g.mut.Lock()
-	defer g.mut.Unlock()
+func (G *Game) GovernmentCastVote(usr string, v bool) ElectionFeedback {
+	G.lock.Lock()
+	defer G.lock.Unlock()
+	var g = G.game
 	var p = g.playersMap[usr] // pointer to the player
 	var _, ok = g.votes[p]
 	if g.turnStage == GOVERNMENT_ELECTION && !ok {

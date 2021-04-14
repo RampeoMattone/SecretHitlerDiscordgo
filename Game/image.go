@@ -124,7 +124,11 @@ func DownloadAvatar(u *discordgo.User) {
 }
 
 // Draws the fascist board
-func (g Game) DrawFascistBoard() *gg.Context {
+func (G *Game) DrawFascistBoard() *gg.Context {
+	G.lock.RLock()
+	defer G.lock.RUnlock()
+	var g = G.game
+
 	// Create new blank image with boardHeight and boardWidth dimensions
 	img := gg.NewContext(boardHeight, boardWidth)
 
@@ -150,7 +154,11 @@ func (g Game) DrawFascistBoard() *gg.Context {
 }
 
 // Draws the liberal board
-func (g Game) DrawLiberalBoard() *gg.Context {
+func (G *Game) DrawLiberalBoard() *gg.Context {
+	G.lock.RLock()
+	defer G.lock.RUnlock()
+	var g = G.game
+
 	// Create new blank image with boardHeight and boardWidth dimensions
 	img := gg.NewContext(boardHeight, boardWidth)
 
@@ -187,7 +195,11 @@ func (g Game) DrawLiberalBoard() *gg.Context {
 }
 
 // Draws the base image for a given game with all of the avatars
-func (g Game) drawBase() *gg.Context {
+func (G *Game) drawBase() *gg.Context {
+	G.lock.RLock()
+	defer G.lock.RUnlock()
+	var g = G.game
+
 	img := gg.NewContext(statusWidth, statusHeight)
 
 	for i, p := range g.players {
@@ -207,9 +219,13 @@ func (g Game) drawBase() *gg.Context {
 }
 
 // Draws the status image for a given player
-func (g Game) DrawStatus(forP *Player) *gg.Context {
+func (G *Game) DrawStatus(forP *Player) *gg.Context {
+	G.lock.RLock()
+	defer G.lock.RUnlock()
+	var g = G.game
+
 	if _, ok := baseImages[g.id]; !ok {
-		baseImages[g.id] = g.drawBase().Image()
+		baseImages[g.id] = G.drawBase().Image()
 	}
 
 	img := gg.NewContext(statusWidth, statusHeight)

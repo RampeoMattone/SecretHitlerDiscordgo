@@ -3,6 +3,7 @@ package Game
 import (
 	"github.com/bwmarrin/discordgo"
 	"os"
+	"sync"
 	"testing"
 )
 
@@ -13,7 +14,10 @@ func init() {
 
 func TestDrawFascistBoard(t *testing.T) {
 	g := Game{
-		fascistBoard: 6,
+		game: game{
+			fascistBoard: 6,
+		},
+		lock: sync.RWMutex{},
 	}
 
 	g.DrawFascistBoard().SavePNG("./temp/fascist-3.png")
@@ -21,8 +25,11 @@ func TestDrawFascistBoard(t *testing.T) {
 
 func TestDrawLiberalBoard(t *testing.T) {
 	g := Game{
-		electionTracker: 3,
-		liberalBoard:    5,
+		game: game{
+			electionTracker: 3,
+			liberalBoard:    5,
+		},
+		lock: sync.RWMutex{},
 	}
 
 	g.DrawLiberalBoard().SavePNG("./temp/liberal-3-2.png")
@@ -83,7 +90,10 @@ func TestDownloadAvatar(t *testing.T) {
 	players[5].role = LIBERAL_ROLE
 
 	g := Game{
-		players: players,
+		game: game{
+			players: players,
+		},
+		lock: sync.RWMutex{},
 	}
 
 	g.DrawStatus(&g.players[0]).SavePNG("./temp/status.png")

@@ -96,17 +96,21 @@ type Deck struct {
 }
 
 type Game struct {
-	mut             sync.Mutex
-	id              int
-	players         []Player
-	deck            Deck
-	playersMap      map[string]*Player // maps discord ids to players
-	president       *Player
-	chancellor      *Player
-	votes           map[*Player]bool
-	lastElected     Utils.Set // term limits for last chancellor and last president
-	executed        Utils.Set // pointer to players who died
-	turnNum         uint8     // used to calculate next president
+	game
+	lock			sync.RWMutex
+}
+
+type game struct {
+	id          int
+	players     []Player
+	deck        Deck
+	playersMap  map[string]*Player // maps discord ids to players
+	president   *Player
+	chancellor  *Player
+	votes       map[*Player]bool
+	lastElected Utils.Set // term limits for last chancellor and last president
+	executed    Utils.Set // pointer to players who died
+	turnNum     uint8     // used to calculate next president
 	turnStage       Stage     // used to track the the turnNum's development
 	electionTracker uint8     // cycles from 0 to 3
 	fascistBoard    uint8     // starts at 0 ( no cards ), ends at 6 ( 6 slots )
