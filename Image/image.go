@@ -95,6 +95,11 @@ func init() {
 	if err != nil {
 		lit.Error("Error while loading file: %v", err)
 	}
+
+	images["liberalRole"], err = gg.LoadPNG("./assets/liberalRole.png")
+	if err != nil {
+		lit.Error("Error while loading file: %v", err)
+	}
 }
 
 // DownloadAvatar downloads avatar for a given user if it doesn't exist
@@ -278,6 +283,19 @@ func DrawStatus(G *Game.Game, forP *Game.Player) *gg.Context {
 					img.DrawImage(images["hitlerRole"], 250+(i*300), 0)
 				} else {
 					img.DrawImage(images["hitlerRole"], 250+((i-5)*300), 420)
+				}
+				break
+			}
+		}
+	}
+
+	if forP.Role == Game.LiberalRole {
+		for i, p := range G.Players {
+			if p.Id == forP.Id {
+				if i < 5 {
+					img.DrawImage(images["liberalRole"], 250+(i*300), 0)
+				} else {
+					img.DrawImage(images["liberalRole"], 250+((i-5)*300), 420)
 				}
 				break
 			}

@@ -3,13 +3,22 @@ package image
 import (
 	"SecretHitlerDiscordgo/Game"
 	"github.com/bwmarrin/discordgo"
+	"github.com/nakabonne/gosivy/agent"
 	"os"
 	"testing"
+	"time"
 )
 
 func init() {
 	_ = os.Mkdir("./temp", 0755)
 	_ = os.Mkdir("./avatars", 0755)
+
+	if err := agent.Listen(agent.Options{}); err != nil {
+		panic(err)
+	}
+	defer agent.Close()
+
+	time.Sleep(2 * time.Second)
 }
 
 func TestDrawFascistBoard(t *testing.T) {
