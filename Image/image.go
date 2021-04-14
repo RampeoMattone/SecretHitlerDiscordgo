@@ -267,6 +267,7 @@ func DrawStatus(G *Game.Game, forP *Game.Player) *gg.Context {
 		}
 	}
 
+	// Draw fascist and Hitler if the user is a fascist or is Hitler with less then 6 players
 	if forP.Role == Game.FascistRole || (forP.Role == Game.HitlerRole && len(G.Players) <= 6) {
 		for i, p := range G.Players {
 			switch p.Role {
@@ -287,17 +288,32 @@ func DrawStatus(G *Game.Game, forP *Game.Player) *gg.Context {
 				break
 			}
 		}
-	}
-
-	if forP.Role == Game.LiberalRole {
-		for i, p := range G.Players {
-			if p.Id == forP.Id {
-				if i < 5 {
-					img.DrawImage(images["liberalRole"], 250+(i*300), 0)
-				} else {
-					img.DrawImage(images["liberalRole"], 250+((i-5)*300), 420)
+	} else {
+		// Else check if the user is Hitler to draw his card
+		if forP.Role == Game.HitlerRole {
+			for i, p := range G.Players {
+				if p.Id == forP.Id {
+					if i < 5 {
+						img.DrawImage(images["hitlerRole"], 250+(i*300), 0)
+					} else {
+						img.DrawImage(images["hitlerRole"], 250+((i-5)*300), 420)
+					}
+					break
 				}
-				break
+			}
+		} else {
+			// Else check if the user is a liberal to draw his card
+			if forP.Role == Game.LiberalRole {
+				for i, p := range G.Players {
+					if p.Id == forP.Id {
+						if i < 5 {
+							img.DrawImage(images["liberalRole"], 250+(i*300), 0)
+						} else {
+							img.DrawImage(images["liberalRole"], 250+((i-5)*300), 420)
+						}
+						break
+					}
+				}
 			}
 		}
 	}
