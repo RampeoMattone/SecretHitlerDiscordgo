@@ -2,13 +2,18 @@ package image
 
 import (
 	"SecretHitlerDiscordgo/Game"
+	"SecretHitlerDiscordgo/database"
+	"bytes"
+	"database/sql"
+	"encoding/base64"
+	"errors"
 	"github.com/bwmarrin/discordgo"
 	"github.com/bwmarrin/lit"
 	"github.com/fogleman/gg"
+	"github.com/spf13/viper"
 	"image"
-	"io"
+	"io/ioutil"
 	"net/http"
-	"os"
 )
 
 var (
@@ -53,62 +58,95 @@ const (
 )
 
 func init() {
-	var err error
+	lit.LogLevel = lit.LogError
 
-	// Loads all of the image used
-	images["liberalBoard"], err = gg.LoadPNG("./assets/liberalBoard.png")
-	if err != nil {
-		lit.Error("Error while loading file: %v", err)
-	}
+	viper.SetConfigName("config")
+	viper.SetConfigType("yml")
+	viper.AddConfigPath(".")
 
-	images["liberalPolicy"], err = gg.LoadPNG("./assets/liberalPolicy.png")
-	if err != nil {
-		lit.Error("Error while loading file: %v", err)
-	}
+	if err := viper.ReadInConfig(); err != nil {
+		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+			// Config file not found
+			lit.Error("Config file not found! See example_config.yml")
+			return
+		}
+	} else {
+		// DB setup
+		database.InitializeDatabase(viper.GetString("drivername"), viper.GetString("datasourcename"))
 
-	images["fascistBoard56"], err = gg.LoadPNG("./assets/fascistBoard_5-6.png")
-	if err != nil {
-		lit.Error("Error while loading file: %v", err)
-	}
+		database.ExecQuery(database.TblUsers, database.DB)
+		database.ExecQuery(database.TblGames, database.DB)
+		database.ExecQuery(database.TblPlayers, database.DB)
+		database.ExecQuery(database.TblRounds, database.DB)
+		database.ExecQuery(database.TblActions, database.DB)
 
-	images["fascistBoard78"], err = gg.LoadPNG("./assets/fascistBoard_7-8.png")
-	if err != nil {
-		lit.Error("Error while loading file: %v", err)
-	}
+		// Loads all of the image used
+		images["liberalBoard"], err = gg.LoadPNG("./assets/liberalBoard.png")
+		if err != nil {
+			lit.Error("Error while loading file: %v", err)
+		}
 
-	images["fascistBoard910"], err = gg.LoadPNG("./assets/fascistBoard_9-10.png")
-	if err != nil {
-		lit.Error("Error while loading file: %v", err)
-	}
+		images["liberalPolicy"], err = gg.LoadPNG("./assets/liberalPolicy.png")
+		if err != nil {
+			lit.Error("Error while loading file: %v", err)
+		}
 
-	images["fascistPolicy"], err = gg.LoadPNG("./assets/fascistPolicy.png")
-	if err != nil {
-		lit.Error("Error while loading file: %v", err)
-	}
+		images["fascistBoard56"], err = gg.LoadPNG("./assets/fascistBoard_5-6.png")
+		if err != nil {
+			lit.Error("Error while loading file: %v", err)
+		}
 
-	images["fascistRole"], err = gg.LoadPNG("./assets/fascistRole.png")
-	if err != nil {
-		lit.Error("Error while loading file: %v", err)
-	}
+		images["fascistBoard78"], err = gg.LoadPNG("./assets/fascistBoard_7-8.png")
+		if err != nil {
+			lit.Error("Error while loading file: %v", err)
+		}
 
-	images["hitlerRole"], err = gg.LoadPNG("./assets/hitlerRole.png")
-	if err != nil {
-		lit.Error("Error while loading file: %v", err)
-	}
+		images["fascistBoard910"], err = gg.LoadPNG("./assets/fascistBoard_9-10.png")
+		if err != nil {
+			lit.Error("Error while loading file: %v", err)
+		}
 
-	images["liberalRole"], err = gg.LoadPNG("./assets/liberalRole.png")
-	if err != nil {
-		lit.Error("Error while loading file: %v", err)
+		images["fascistPolicy"], err = gg.LoadPNG("./assets/fascistPolicy.png")
+		if err != nil {
+			lit.Error("Error while loading file: %v", err)
+		}
+
+		images["fascistRole"], err = gg.LoadPNG("./assets/fascistRole.png")
+		if err != nil {
+			lit.Error("Error while loading file: %v", err)
+		}
+
+		images["hitlerRole"], err = gg.LoadPNG("./assets/hitlerRole.png")
+		if err != nil {
+			lit.Error("Error while loading file: %v", err)
+		}
+
+		images["liberalRole"], err = gg.LoadPNG("./assets/liberalRole.png")
+		if err != nil {
+			lit.Error("Error while loading file: %v", err)
+		}
 	}
 }
 
 // DownloadAvatar downloads avatar for a given user if it doesn't exist
 func DownloadAvatar(u *discordgo.User) {
-	// If the avatar already exist, just return
-	path := "./avatars/" + u.ID + "-" + u.Avatar + ".png"
-	_, err := os.Stat(path)
-	if os.IsExist(err) {
+	// Check stored avatar
+	var hash string
+	err := database.DB.QueryRow("SELECT avatarHash FROM users WHERE id=?", u.ID).Scan(&hash)
+
+	if hash == u.Avatar {
+		// Avatar is already updated
 		return
+	}
+
+	// If the user doesn't exist, add it
+	if err != nil && errors.Is(err, sql.ErrNoRows) {
+		stm, _ := database.DB.Prepare("INSERT INTO users(id, avatarHash, name) VALUES(?, ?, ?)")
+		_, err = stm.Exec(u.ID, u.Avatar, base64.StdEncoding.EncodeToString([]byte(u.Username)))
+		if err != nil {
+			lit.Error("Error while inserting user into database: %v", err)
+			return
+		}
 	}
 
 	// Start HTTP request
@@ -117,20 +155,13 @@ func DownloadAvatar(u *discordgo.User) {
 		lit.Error("Error while downloading file: %v", err)
 		return
 	}
-	defer resp.Body.Close()
 
-	// Creates file
-	f, err := os.Create(path)
-	if err != nil {
-		lit.Error("Error while creating file: %v", err)
-		return
-	}
-	defer f.Close()
+	img, _ := ioutil.ReadAll(resp.Body)
+	_ = resp.Body.Close()
 
-	// And writes the data
-	_, err = io.Copy(f, resp.Body)
+	_, err = database.DB.Exec("UPDATE users SET avatarImage=? WHERE id=?", img, u.ID)
 	if err != nil {
-		lit.Error("Error while copy data to file: %v", err)
+		lit.Error("Error inserting image into database: %v", err)
 	}
 }
 
@@ -143,11 +174,9 @@ func DrawFascistBoard(G *Game.Game) *gg.Context {
 	switch len(G.Players) {
 	case 7, 8:
 		img.DrawImage(images["fascistBoard78"], 0, 0)
-		break
 
 	case 9, 10:
 		img.DrawImage(images["fascistBoard910"], 0, 0)
-		break
 
 	default:
 		img.DrawImage(images["fascistBoard56"], 0, 0)
@@ -183,7 +212,7 @@ func DrawLiberalBoard(G *Game.Game) *gg.Context {
 		switch G.ElectionTracker {
 		case 1:
 			offset = 1.5
-			break
+
 		case 2:
 			offset = 1.0
 		}
@@ -277,7 +306,6 @@ func DrawStatus(G *Game.Game, forP *Game.Player) *gg.Context {
 				} else {
 					img.DrawImage(images["fascistRole"], 250+((i-5)*300), 420)
 				}
-				break
 
 			case Game.HitlerRole:
 				if i < 5 {
@@ -285,7 +313,6 @@ func DrawStatus(G *Game.Game, forP *Game.Player) *gg.Context {
 				} else {
 					img.DrawImage(images["hitlerRole"], 250+((i-5)*300), 420)
 				}
-				break
 			}
 		}
 	} else {
@@ -322,9 +349,8 @@ func DrawStatus(G *Game.Game, forP *Game.Player) *gg.Context {
 }
 
 func loadAvatar(id string) {
-	var err error
-	avatarImageCache[id], err = gg.LoadPNG("./avatars/" + id + ".png")
-	if err != nil {
-		lit.Error("Error loading avatar: %v", err)
-	}
+	var bts []byte
+	_ = database.DB.QueryRow("SELECT avatarImage FROM users WHERE id=?", id).Scan(&bts)
+
+	avatarImageCache[id], _, _ = image.Decode(bytes.NewBuffer(bts))
 }

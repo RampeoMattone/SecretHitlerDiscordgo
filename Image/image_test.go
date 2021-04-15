@@ -11,7 +11,6 @@ import (
 
 func init() {
 	_ = os.Mkdir("./temp", 0755)
-	_ = os.Mkdir("./avatars", 0755)
 
 	if err := agent.Listen(agent.Options{}); err != nil {
 		panic(err)
