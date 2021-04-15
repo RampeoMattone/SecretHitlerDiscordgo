@@ -1,4 +1,4 @@
-package Bot
+package bot
 
 // This file describes the commands that will be subscribed by the bot
 
