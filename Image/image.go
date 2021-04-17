@@ -1,12 +1,12 @@
 package image
 
 import (
-	"SecretHitlerDiscordgo/Game"
 	"SecretHitlerDiscordgo/database"
 	"bytes"
 	"database/sql"
 	"encoding/base64"
 	"errors"
+	"github.com/RampeoMattone/SecretGopher"
 	"github.com/bwmarrin/discordgo"
 	"github.com/bwmarrin/lit"
 	"github.com/fogleman/gg"
@@ -22,7 +22,7 @@ var (
 	// Cache for the image of the avatars
 	avatarImageCache = make(map[string]image.Image)
 	// Map for storing the status image with only avatars
-	baseImages = make(map[int]image.Image)
+	baseImages = make(map[*SecretGopher.GameState]image.Image)
 )
 
 const (
@@ -166,12 +166,12 @@ func DownloadAvatar(u *discordgo.User) {
 }
 
 // DrawFascistBoard draws the fascist board
-func DrawFascistBoard(G *Game.Game) *gg.Context {
+func DrawFascistBoard(G *SecretGopher.GameState) *gg.Context {
 	// Create new blank image with boardHeight and boardWidth dimensions
 	img := gg.NewContext(boardHeight, boardWidth)
 
 	// Use the appropriate board type
-	switch len(G.Players) {
+	switch len(G.Roles) {
 	case 7, 8:
 		img.DrawImage(images["fascistBoard78"], 0, 0)
 
@@ -183,7 +183,7 @@ func DrawFascistBoard(G *Game.Game) *gg.Context {
 	}
 
 	// Draw the policy card
-	var i uint8
+	var i int8
 	for i = 0; i < G.FascistTracker; i++ {
 		img.DrawImage(images["fascistPolicy"], fascistX+fascistOffset*int(i), fascistY)
 	}
@@ -192,7 +192,7 @@ func DrawFascistBoard(G *Game.Game) *gg.Context {
 }
 
 // DrawLiberalBoard draws the liberal board
-func DrawLiberalBoard(G *Game.Game) *gg.Context {
+func DrawLiberalBoard(G *SecretGopher.GameState) *gg.Context {
 	// Create new blank image with boardHeight and boardWidth dimensions
 	img := gg.NewContext(boardHeight, boardWidth)
 
@@ -200,7 +200,7 @@ func DrawLiberalBoard(G *Game.Game) *gg.Context {
 	img.DrawImage(images["liberalBoard"], 0, 0)
 
 	// Draw the policy cards
-	var i uint8
+	var i int8
 	for i = 0; i < G.LiberalTracker; i++ {
 		img.DrawImage(images["liberalPolicy"], liberalX+liberalOffset*int(i), liberalY)
 	}
@@ -229,19 +229,19 @@ func DrawLiberalBoard(G *Game.Game) *gg.Context {
 }
 
 // Draws the base image for a given game with all of the avatars
-func drawBase(G *Game.Game) *gg.Context {
+func drawBase(players []*discordgo.User) *gg.Context {
 	img := gg.NewContext(statusWidth, statusHeight)
 
-	for i, p := range G.Players {
+	for i, p := range players {
 		// If it's not loaded, load the image
-		if _, ok := avatarImageCache[p.Id]; !ok {
-			loadAvatar(p.Id)
+		if _, ok := avatarImageCache[p.ID]; !ok {
+			loadAvatar(p.ID)
 		}
 
 		if i < 5 {
-			img.DrawImageAnchored(avatarImageCache[p.Id], 200+(i*300), 180, 0.5, 0.5)
+			img.DrawImageAnchored(avatarImageCache[p.ID], 200+(i*300), 180, 0.5, 0.5)
 		} else {
-			img.DrawImageAnchored(avatarImageCache[p.Id], 200+((i-5)*300), 600, 0.5, 0.5)
+			img.DrawImageAnchored(avatarImageCache[p.ID], 200+((i-5)*300), 600, 0.5, 0.5)
 		}
 	}
 
@@ -249,65 +249,50 @@ func drawBase(G *Game.Game) *gg.Context {
 }
 
 // DrawStatus draws the status image for a given player
-func DrawStatus(G *Game.Game, forP *Game.Player) *gg.Context {
-	if _, ok := baseImages[G.Id]; !ok {
-		baseImages[G.Id] = drawBase(G).Image()
+func DrawStatus(G *SecretGopher.GameState, forP int8, players []*discordgo.User) *gg.Context {
+
+	if _, ok := baseImages[G]; !ok {
+		baseImages[G] = drawBase(players).Image()
 	}
 
 	// Create new image
 	img := gg.NewContext(statusWidth, statusHeight)
 	// Draw the base on top of it
-	img.DrawImage(baseImages[G.Id], 0, 0)
+	img.DrawImage(baseImages[G], 0, 0)
 
 	// Loads the font
 	if err := img.LoadFontFace("./fonts/Karantina-Regular.ttf", 96); err != nil {
 		lit.Error("Error while loading font: %v", err)
 	}
 
-	var president, chancellor bool
-	for i, p := range G.Players {
-		// Draws the president
-		if G.President.Id == p.Id {
-			img.SetRGB(0, 0, 0)
+	// Draws the president
+	img.SetRGB(0, 0, 0)
+	if G.President < 5 {
+		img.DrawStringAnchored("President", 200+(float64(G.President)*300), 350, 0.5, 0.5)
+	} else {
+		img.DrawStringAnchored("President", 200+(float64(G.President-5)*300), 770, 0.5, 0.5)
+	}
 
-			if i < 5 {
-				img.DrawStringAnchored("President", 200+(float64(i)*300), 350, 0.5, 0.5)
-			} else {
-				img.DrawStringAnchored("President", 200+(float64(i-5)*300), 770, 0.5, 0.5)
-			}
-			president = true
-		} else {
-			// Draws the chancellor
-			if G.Chancellor.Id == p.Id {
-				img.SetRGB(0, 0, 0)
-
-				if i < 5 {
-					img.DrawStringAnchored("Chancellor", 200+(float64(i)*300), 350, 0.5, 0.5)
-				} else {
-					img.DrawStringAnchored("Chancellor", 200+(float64(i-5)*300), 770, 0.5, 0.5)
-				}
-				chancellor = true
-			}
-		}
-
-		// If we drew both text
-		if president && chancellor {
-			break
-		}
+	// Draws the chancellor
+	img.SetRGB(0, 0, 0)
+	if G.Chancellor < 5 {
+		img.DrawStringAnchored("Chancellor", 200+(float64(G.Chancellor)*300), 350, 0.5, 0.5)
+	} else {
+		img.DrawStringAnchored("Chancellor", 200+(float64(G.Chancellor-5)*300), 770, 0.5, 0.5)
 	}
 
 	// Draw fascist and Hitler if the user is a fascist or is Hitler with less then 6 players
-	if forP.Role == Game.FascistRole || (forP.Role == Game.HitlerRole && len(G.Players) <= 6) {
-		for i, p := range G.Players {
-			switch p.Role {
-			case Game.FascistRole:
+	if G.Roles[forP] == SecretGopher.FascistParty || (G.Roles[forP] == SecretGopher.Hitler && len(G.Roles) <= 6) {
+		for i, p := range G.Roles {
+			switch p {
+			case SecretGopher.FascistParty:
 				if i < 5 {
 					img.DrawImage(images["fascistRole"], 250+(i*300), 0)
 				} else {
 					img.DrawImage(images["fascistRole"], 250+((i-5)*300), 420)
 				}
 
-			case Game.HitlerRole:
+			case SecretGopher.Hitler:
 				if i < 5 {
 					img.DrawImage(images["hitlerRole"], 250+(i*300), 0)
 				} else {
@@ -317,29 +302,19 @@ func DrawStatus(G *Game.Game, forP *Game.Player) *gg.Context {
 		}
 	} else {
 		// Else check if the user is Hitler to draw his card
-		if forP.Role == Game.HitlerRole {
-			for i, p := range G.Players {
-				if p.Id == forP.Id {
-					if i < 5 {
-						img.DrawImage(images["hitlerRole"], 250+(i*300), 0)
-					} else {
-						img.DrawImage(images["hitlerRole"], 250+((i-5)*300), 420)
-					}
-					break
-				}
+		if G.Roles[forP] == SecretGopher.Hitler {
+			if forP < 5 {
+				img.DrawImage(images["hitlerRole"], 250+(int(forP)*300), 0)
+			} else {
+				img.DrawImage(images["hitlerRole"], 250+((int(forP)-5)*300), 420)
 			}
 		} else {
 			// Else check if the user is a liberal to draw his card
-			if forP.Role == Game.LiberalRole {
-				for i, p := range G.Players {
-					if p.Id == forP.Id {
-						if i < 5 {
-							img.DrawImage(images["liberalRole"], 250+(i*300), 0)
-						} else {
-							img.DrawImage(images["liberalRole"], 250+((i-5)*300), 420)
-						}
-						break
-					}
+			if G.Roles[forP] == SecretGopher.LiberalParty {
+				if forP < 5 {
+					img.DrawImage(images["liberalRole"], 250+(int(forP)*300), 0)
+				} else {
+					img.DrawImage(images["liberalRole"], 250+((int(forP)-5)*300), 420)
 				}
 			}
 		}
@@ -349,8 +324,8 @@ func DrawStatus(G *Game.Game, forP *Game.Player) *gg.Context {
 }
 
 func loadAvatar(id string) {
-	var bts []byte
-	_ = database.DB.QueryRow("SELECT avatarImage FROM users WHERE id=?", id).Scan(&bts)
+	var b []byte
+	_ = database.DB.QueryRow("SELECT avatarImage FROM users WHERE id=?", id).Scan(&b)
 
-	avatarImageCache[id], _, _ = image.Decode(bytes.NewBuffer(bts))
+	avatarImageCache[id], _, _ = image.Decode(bytes.NewBuffer(b))
 }

@@ -3,6 +3,7 @@ module SecretHitlerDiscordgo
 go 1.16
 
 require (
+	github.com/RampeoMattone/SecretGopher v0.0.0-20210417143916-7feeb40df70e
 	github.com/bwmarrin/discordgo v0.23.3-0.20210410202908-577e7dd4f6cc
 	github.com/bwmarrin/lit v0.0.0-20190813132558-fd4b44871312
 	github.com/fogleman/gg v1.3.0
