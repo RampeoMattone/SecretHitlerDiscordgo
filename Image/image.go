@@ -12,8 +12,10 @@ import (
 	"github.com/fogleman/gg"
 	"github.com/spf13/viper"
 	"image"
+	"image/png"
 	"io/ioutil"
 	"net/http"
+	"sync"
 )
 
 var (
@@ -183,11 +185,21 @@ func DrawFascistBoard(G *SecretGopher.GameState) *gg.Context {
 	}
 
 	// Draw the policy card
-	var i int8
+	var (
+		i  int8
+		wg sync.WaitGroup
+	)
 	for i = 0; i < G.FascistTracker; i++ {
-		img.DrawImage(images["fascistPolicy"], fascistX+fascistOffset*int(i), fascistY)
+		wg.Add(1)
+
+		i := int(i)
+		go func() {
+			img.DrawImage(images["fascistPolicy"], fascistX+fascistOffset*i, fascistY)
+			wg.Done()
+		}()
 	}
 
+	wg.Wait()
 	return img
 }
 
@@ -200,9 +212,19 @@ func DrawLiberalBoard(G *SecretGopher.GameState) *gg.Context {
 	img.DrawImage(images["liberalBoard"], 0, 0)
 
 	// Draw the policy cards
-	var i int8
+	var (
+		i  int8
+		wg sync.WaitGroup
+	)
+
 	for i = 0; i < G.LiberalTracker; i++ {
-		img.DrawImage(images["liberalPolicy"], liberalX+liberalOffset*int(i), liberalY)
+		wg.Add(1)
+		i := int(i)
+
+		go func() {
+			img.DrawImage(images["liberalPolicy"], liberalX+liberalOffset*i, liberalY)
+			wg.Done()
+		}()
 	}
 
 	// And the election tracker
@@ -225,26 +247,38 @@ func DrawLiberalBoard(G *SecretGopher.GameState) *gg.Context {
 		img.Fill()
 	}
 
+	wg.Wait()
 	return img
 }
 
 // Draws the base image for a given game with all of the avatars
 func drawBase(players []*discordgo.User) *gg.Context {
-	img := gg.NewContext(statusWidth, statusHeight)
+	var (
+		wg  sync.WaitGroup
+		img = gg.NewContext(statusWidth, statusHeight)
+	)
 
 	for i, p := range players {
-		// If it's not loaded, load the image
-		if _, ok := avatarImageCache[p.ID]; !ok {
-			loadAvatar(p.ID)
-		}
+		wg.Add(1)
+		p := p
+		i := i
 
-		if i < 5 {
-			img.DrawImageAnchored(avatarImageCache[p.ID], 200+(i*300), 180, 0.5, 0.5)
-		} else {
-			img.DrawImageAnchored(avatarImageCache[p.ID], 200+((i-5)*300), 600, 0.5, 0.5)
-		}
+		go func() {
+			// If it's not loaded, load the image
+			if _, ok := avatarImageCache[p.ID]; !ok {
+				loadAvatar(p.ID)
+			}
+
+			if i < 5 {
+				img.DrawImageAnchored(avatarImageCache[p.ID], 200+(i*300), 180, 0.5, 0.5)
+			} else {
+				img.DrawImageAnchored(avatarImageCache[p.ID], 200+((i-5)*300), 600, 0.5, 0.5)
+			}
+			wg.Done()
+		}()
 	}
 
+	wg.Wait()
 	return img
 }
 
@@ -283,23 +317,36 @@ func DrawStatus(G *SecretGopher.GameState, forP int8, players []*discordgo.User)
 
 	// Draw fascist and Hitler if the user is a fascist or is Hitler with less then 6 players
 	if G.Roles[forP] == SecretGopher.FascistParty || (G.Roles[forP] == SecretGopher.Hitler && len(G.Roles) <= 6) {
+		var wg sync.WaitGroup
+
 		for i, p := range G.Roles {
-			switch p {
-			case SecretGopher.FascistParty:
-				if i < 5 {
-					img.DrawImage(images["fascistRole"], 250+(i*300), 0)
-				} else {
-					img.DrawImage(images["fascistRole"], 250+((i-5)*300), 420)
+			wg.Add(1)
+
+			p := p
+			i := i
+
+			go func() {
+				switch p {
+				case SecretGopher.FascistParty:
+					if i < 5 {
+						img.DrawImage(images["fascistRole"], 250+(i*300), 0)
+					} else {
+						img.DrawImage(images["fascistRole"], 250+((i-5)*300), 420)
+					}
+
+				case SecretGopher.Hitler:
+					if i < 5 {
+						img.DrawImage(images["hitlerRole"], 250+(i*300), 0)
+					} else {
+						img.DrawImage(images["hitlerRole"], 250+((i-5)*300), 420)
+					}
 				}
 
-			case SecretGopher.Hitler:
-				if i < 5 {
-					img.DrawImage(images["hitlerRole"], 250+(i*300), 0)
-				} else {
-					img.DrawImage(images["hitlerRole"], 250+((i-5)*300), 420)
-				}
-			}
+				wg.Done()
+			}()
 		}
+
+		wg.Wait()
 	} else {
 		// Else check if the user is Hitler to draw his card
 		if G.Roles[forP] == SecretGopher.Hitler {
@@ -325,7 +372,10 @@ func DrawStatus(G *SecretGopher.GameState, forP int8, players []*discordgo.User)
 
 func loadAvatar(id string) {
 	var b []byte
-	_ = database.DB.QueryRow("SELECT avatarImage FROM users WHERE id=?", id).Scan(&b)
+	err := database.DB.QueryRow("SELECT avatarImage FROM users WHERE id=?", id).Scan(&b)
+	if err != nil {
+		lit.Error("Error while loading image from database: %v", err)
+	}
 
-	avatarImageCache[id], _, _ = image.Decode(bytes.NewBuffer(b))
+	avatarImageCache[id], _ = png.Decode(bytes.NewBuffer(b))
 }

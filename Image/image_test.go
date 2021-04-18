@@ -9,34 +9,8 @@ import (
 	"time"
 )
 
-func init() {
-	_ = os.Mkdir("./temp", 0755)
-
-	if err := agent.Listen(agent.Options{}); err != nil {
-		panic(err)
-	}
-	defer agent.Close()
-
-	time.Sleep(2 * time.Second)
-}
-
-func TestDrawFascistBoard(t *testing.T) {
-	g := SecretGopher.GameState{FascistTracker: 6}
-
-	DrawFascistBoard(&g).SavePNG("./temp/fascist-3.png")
-}
-
-func TestDrawLiberalBoard(t *testing.T) {
-	g := SecretGopher.GameState{
-		ElectionTracker: 3,
-		LiberalTracker:  5,
-	}
-
-	DrawLiberalBoard(&g).SavePNG("./temp/liberal-3-2.png")
-}
-
-func TestDrawStatus(t *testing.T) {
-	users := []*discordgo.User{
+var (
+	users = []*discordgo.User{
 		{
 			ID:       "145618075452964864",
 			Username: "TheTipo01",
@@ -79,16 +53,49 @@ func TestDrawStatus(t *testing.T) {
 		},
 	}
 
-	g := SecretGopher.GameState{
-		President:  0,
-		Chancellor: 5,
-		Roles:      []SecretGopher.Role{SecretGopher.FascistParty, SecretGopher.FascistParty, SecretGopher.Hitler, SecretGopher.LiberalParty, SecretGopher.LiberalParty, SecretGopher.LiberalParty, SecretGopher.FascistParty, SecretGopher.LiberalParty},
+	g = SecretGopher.GameState{
+		ElectionTracker: 3,
+		FascistTracker:  6,
+		LiberalTracker:  5,
+		President:       0,
+		Chancellor:      5,
+		Roles:           []SecretGopher.Role{SecretGopher.FascistParty, SecretGopher.FascistParty, SecretGopher.Hitler, SecretGopher.LiberalParty, SecretGopher.LiberalParty, SecretGopher.LiberalParty, SecretGopher.FascistParty, SecretGopher.LiberalParty},
 	}
+)
 
+func init() {
+	_ = os.Mkdir("./temp", 0755)
+
+	if err := agent.Listen(agent.Options{}); err != nil {
+		panic(err)
+	}
+	defer agent.Close()
+
+	time.Sleep(2 * time.Second)
+}
+
+func TestDrawFascistBoard(t *testing.T) {
+	DrawFascistBoard(&g).SavePNG("./temp/fascist-3.png")
+}
+
+func TestDrawLiberalBoard(t *testing.T) {
+	DrawLiberalBoard(&g).SavePNG("./temp/liberal-3-2.png")
+}
+
+func TestDownloadAvatar(t *testing.T) {
 	for _, u := range users {
 		DownloadAvatar(u)
 	}
+}
 
+func TestDrawBase(t *testing.T) {
+	b := drawBase(users)
+	b.SavePNG("./temp/base.png")
+
+	baseImages[&g] = b.Image()
+}
+
+func TestDrawStatus(t *testing.T) {
 	DrawStatus(&g, 2, users).SavePNG("./temp/statusHitler.png")
 	DrawStatus(&g, 0, users).SavePNG("./temp/statusFascist.png")
 	DrawStatus(&g, 3, users).SavePNG("./temp/statusLiberal.png")
