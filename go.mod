@@ -12,6 +12,6 @@ require (
 	github.com/nakabonne/gosivy v0.2.0
 	github.com/spf13/viper v1.7.1
 	golang.org/x/image v0.0.0-20210220032944-ac19c3e999fb // indirect
-	golang.org/x/sys v0.0.0-20210414055047-fe65e336abe0 // indirect
+	golang.org/x/sys v0.1.0 // indirect
 	modernc.org/sqlite v1.10.2
 )
